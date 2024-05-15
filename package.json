@@ -1,0 +1,16 @@
+{
+  "name": "create-startkit.ai",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "create": "./bin/create-startkit.js"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "figlet": "^1.7.0",
+    "inquirer": "^9.2.21",
+    "signale": "^1.4.0"
+  }
+}
