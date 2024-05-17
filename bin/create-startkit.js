@@ -12,21 +12,39 @@ import signale from "signale";
 const logger = new signale.Signale({
   logLevel: "info",
 });
+
+logger.log(
+  chalk.blue(figlet.textSync("StartKit.AI", { horizontalLayout: "full" }))
+);
+
 let repoType = process.argv[2] || "growth";
-let projectName;
+let projectName = "./my-ai-project";
 if (!["growth", "starter"].includes(process.argv[2])) {
   repoType = "growth";
-  projectName = process.argv[2] || "./my-ai-project";
+  projectName = process.argv[2] || projectName;
 } else {
-  projectName = process.argv[3] || "./my-ai-project";
+  projectName = process.argv[3] || projectName;
 }
 
 const repos = {
-  growth: "https://github.com/startkit-ai/startkit.ai.git",
-  starter: "https://github.com/startkit-ai/startkit.ai-starter.git",
+  growth: "git@github.com:startkit-ai/startkit.ai.git",
+  starter: "git@github.com:startkit-ai/startkit.ai.git",
 };
-
-const repo = repos[repoType];
+const access = getRepoAccess();
+if (!access.growth && !access.starter) {
+  logger.error(
+    `\n❌ It looks like you don't have access to the StartKit.AI repo, you need to purchase access from https://startkit.ai.`
+  );
+  process.exit(1);
+}
+let repo;
+if (repoType) {
+  repo = repos[repoType];
+} else if (access.growth) {
+  repo = repos.growth;
+} else if (access.starter) {
+  repo = repos.starter;
+}
 
 if (fs.existsSync(projectName)) {
   logger.error(`Project directory "${projectName}" already exists.`);
@@ -53,11 +71,7 @@ const modules = [
   "AI Detection",
 ];
 
-console.log(
-  chalk.blue(figlet.textSync("StartKit.AI", { horizontalLayout: "full" }))
-);
-
-console.info("\n🤖 Welcome to StartKit.AI, let's get started!\n");
+logger.info("\n🤖 Welcome to StartKit.AI, let's get started!\n");
 
 inquirer
   .prompt([
@@ -210,7 +224,10 @@ async function runAnswers(answers) {
 
 function cloneRepo(projectPath) {
   logger.interactive("1").await(`Cloning StartKit.AI repo into ${projectPath}`);
-  execSync(`git clone ${repo} ${projectPath}`, { stdio: "ignore" });
+  execSync(`git clone --recurse-submodules ${repo} ${projectPath}`, {
+    stdio: "ignore",
+  });
+  execSync(`cd ${projectPath} && git remote add startkit ${repo}`);
   logger
     .interactive("1")
     .success(`Cloned StartKit.AI repo into ${projectPath}`);
@@ -272,4 +289,22 @@ async function createEnv(answers, { projectPath }) {
 
 async function sleep() {
   return await new Promise((resolve) => setTimeout(resolve, 1000));
+}
+
+function getRepoAccess() {
+  let canAccessGrowth = false;
+  let canAccessStarter = false;
+  try {
+    execSync(`git ls-remote ${repos.growth}`);
+    canAccessGrowth = true;
+  } catch (e) {}
+  try {
+    execSync(`git ls-remote ${repos.starter}`);
+    canAccessStarter = true;
+  } catch (e) {}
+
+  return {
+    growth: canAccessGrowth,
+    starter: canAccessStarter,
+  };
 }
