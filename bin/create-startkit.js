@@ -7,11 +7,15 @@ import fs from "fs";
 import inquirer from "inquirer";
 import path from "path";
 import { randomBytes } from "crypto";
+import semver from "semver";
 import signale from "signale";
 
 const logger = new signale.Signale({
   logLevel: "info",
 });
+
+const requiredVersion = ">=18.19.1";
+const currentVersion = process.version;
 
 let interactives = [];
 logger.interactive = (interactiveScope) => {
@@ -42,6 +46,13 @@ const repos = {
 };
 
 logger.interactive("r").await("Checking requirements...\n");
+
+if (!semver.satisfies(currentVersion, requiredVersion)) {
+  logger.error(
+    `Node.js version ${requiredVersion} is required. You are using ${currentVersion}.`
+  );
+  process.exit(1);
+}
 
 const access = getRepoAccess();
 if (!access.growth && !access.starter) {
