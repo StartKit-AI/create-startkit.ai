@@ -13,6 +13,16 @@ const logger = new signale.Signale({
   logLevel: "info",
 });
 
+let interactives = [];
+logger.interactive = (interactiveScope) => {
+  if (!interactives[interactiveScope]) {
+    interactives[interactiveScope] = new signale.Signale({
+      interactive: true,
+    });
+  }
+  return interactives[interactiveScope];
+};
+
 logger.log(
   chalk.blue(figlet.textSync("StartKit.AI", { horizontalLayout: "full" }))
 );
@@ -30,13 +40,19 @@ const repos = {
   growth: "git@github.com:startkit-ai/startkit.ai.git",
   starter: "git@github.com:startkit-ai/startkit.ai.git",
 };
+
+logger.interactive("r").await("Checking requirements...\n");
+
 const access = getRepoAccess();
 if (!access.growth && !access.starter) {
-  logger.error(
-    `\n❌ It looks like you don't have access to the StartKit.AI repo, you need to purchase access from https://startkit.ai.`
-  );
+  logger
+    .interactive("r")
+    .error(
+      `\n❌ It looks like you don't have access to the StartKit.AI repo, you need to purchase access from https://startkit.ai.`
+    );
   process.exit(1);
 }
+
 let repo;
 if (repoType) {
   repo = repos[repoType];
@@ -47,19 +63,13 @@ if (repoType) {
 }
 
 if (fs.existsSync(projectName)) {
-  logger.error(`Project directory "${projectName}" already exists.`);
+  logger
+    .interactive("r")
+    .error(`Project directory "${projectName}" already exists.`);
   process.exit(1);
 }
 
-let interactives = [];
-logger.interactive = (interactiveScope) => {
-  if (!interactives[interactiveScope]) {
-    interactives[interactiveScope] = new signale.Signale({
-      interactive: true,
-    });
-  }
-  return interactives[interactiveScope];
-};
+logger.interactive("r").success("OK!\n\n");
 
 const modules = [
   "Chat",
@@ -71,7 +81,10 @@ const modules = [
   "AI Detection",
 ];
 
-logger.info("\n🤖 Welcome to StartKit.AI, let's get started!\n");
+logger.log("🤖 Welcome to StartKit.AI, let's get started!\n");
+logger.log(
+  "We recommend that you also follow along with the setup steps at https://startkit.ai/docs, each step will also link to the relevant doc page"
+);
 
 inquirer
   .prompt([
@@ -102,14 +115,18 @@ inquirer
     {
       type: "input",
       name: "mongoUri",
-      message: "Enter your MongoDB connection string:\n",
+      message: `Enter your MongoDB connection string: \n${chalk.gray(
+        `More info here https://startkit.ai/docs/getting-started/installation/database/`
+      )}\n`,
       required: true,
       prefix: `\n${chalk.green("?")}`,
     },
     {
       name: "enableStorage",
       type: "list",
-      message: `Do you want to set up S3 storage? This will let your product store images generated, or any user uploads. You can find more info here: https://startkit.ai/docs/getting-started/installation/s3\n`,
+      message: `Do you want to set up S3 storage? This will let your product store images generated, or any user uploads: \n${chalk.gray(
+        `More info here: https://startkit.ai/docs/getting-started/installation/s3`
+      )}\n`,
       required: true,
       choices: ["Yes", "No"],
       prefix: `\n${chalk.green("?")}`,
@@ -162,7 +179,9 @@ inquirer
     {
       name: "enablePinecone",
       type: "list",
-      message: `Do you want to set up Pinecone? This will let your product do RAG, where it saves data that it can use alongside Chat endpoints. More info here: https://startkit.ai/docs/getting-started/installation/pinecone'\n`,
+      message: `Do you want to set up Pinecone? This will let your product do RAG, where it saves data that it can use alongside Chat endpoints: \n${chalk.gray(
+        "more info here: https://startkit.ai/docs/getting-started/installation/pinecone"
+      )}\n`,
       required: true,
       choices: ["Yes", "No"],
       prefix: `\n${chalk.green("?")}`,
@@ -187,10 +206,29 @@ inquirer
     },
     {
       type: "list",
-      name: "start",
+      name: "type",
+      message: `What kind of app are you going to create? (You can change this later)`,
+      choices: [
+        "(Users) I will have users who sign in and access the API",
+        "(Admin) I want to make secure requests to the API myself",
+        "(Open) I want anyone to be able to make requests to the API for free",
+      ],
+    },
+    // {
+    //   type: "list",
+    //   name: "start",
+    //   message:
+    //     "Do you want to run StartKit.AI now? (Or you can do this later by running `yarn dev`)\n",
+    //   choices: ["Yes", "No"],
+    //   prefix: `\n${chalk.green("?")}`,
+    //   when: (a) => !a.type.startsWith("(Admin)"),
+    // },
+    {
+      type: "list",
+      name: "startAdmin",
       message:
-        "Do you want to run StartKit.AI now? (Or you can do this later by running `yarn dev`)\n",
-      choices: ["Yes", "No"],
+        "The StartKit.AI server will start now and open the config page so that you can set an Admin username and password.",
+      choices: ["OK", `No, I'll do this later`],
       prefix: `\n${chalk.green("?")}`,
     },
   ])
@@ -212,7 +250,7 @@ async function runAnswers(answers) {
   logger.interactive("2").success(`Dependencies installed`);
   await createEnv(answers, { projectPath });
 
-  if (answers.start === "Yes") {
+  if (answers.start === "Yes" || answers.startAdmin === "OK") {
     logger.interactive("4").await(`Running StartKit.AI`);
     try {
       execSync("node index.js --open", { cwd: projectPath, stdio: "inherit" });
@@ -251,6 +289,10 @@ async function createEnv(answers, { projectPath }) {
   output.push({ key: "PINECONE_API_KEY", value: answers.pineconeApiKey });
   output.push({ key: "PINECONE_INDEX_HOST", value: answers.pineconeIndexHost });
   output.push({ key: "OPENAI_KEY", value: answers.openAiKey });
+
+  if (answers.type.startsWith("(Open)")) {
+    output.push({ key: "DISABLE_AUTH", value: "1" });
+  }
 
   try {
     fs.writeFileSync(envPath, "", { flag: "wx" });
