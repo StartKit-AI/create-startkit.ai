@@ -83,12 +83,13 @@ if (fs.existsSync(projectName)) {
 logger.interactive("r").success("OK!\n\n");
 
 const modules = [
+  "Everything!",
   "Chat",
   "Image Generation",
-  "Text-to-Speech",
-  "Speech-to-Text",
+  "Text-to-Speech & Speech-to-Text",
   "Translation",
   "Moderation",
+  "Documnent Analysis",
   "AI Detection",
 ];
 
@@ -107,15 +108,15 @@ inquirer
       default: projectName,
       prefix: `\n${chalk.green("?")}`,
     },
-    // {
-    //   name: "modules",
-    //   type: "checkbox",
-    //   message: `What modules will your project use?\n`,
-    //   required: true,
-    //   choices: modules,
-    //   default: modules.slice(0, 5),
-    //   prefix: `\n${chalk.green("?")}`,
-    // },
+    {
+      name: "modules",
+      type: "checkbox",
+      message: `Which AI functionality does your project need?\n`,
+      required: true,
+      choices: modules,
+      default: modules.slice(0, 1),
+      prefix: `\n${chalk.green("?")}`,
+    },
     {
       name: "openApiKey",
       type: "input",
@@ -238,7 +239,7 @@ inquirer
       type: "list",
       name: "startAdmin",
       message:
-        "The StartKit.AI server will start now and open the config page so that you can set an Admin username and password.",
+        "When setup is complete, the StartKit.AI server will start and open the config page so that you can set an Admin username and password.",
       choices: ["OK", `No, I'll do this later`],
       prefix: `\n${chalk.green("?")}`,
     },
@@ -260,6 +261,9 @@ async function runAnswers(answers) {
   execSync(`yarn`, { cwd: projectPath, stdio: "ignore" });
   logger.interactive("2").success(`Dependencies installed`);
   await createEnv(answers, { projectPath });
+  await pruneModules({ modules: answers.modules, projectPath });
+  await sleep();
+  logger.success("Setup complete!");
 
   if (answers.start === "Yes" || answers.startAdmin === "OK") {
     logger.interactive("4").await(`Running StartKit.AI`);
@@ -282,6 +286,31 @@ function cloneRepo(projectPath) {
     .success(`Cloned StartKit.AI repo into ${projectPath}`);
 }
 
+async function pruneModules({ modules, projectPath }) {
+  if (modules.includes("Everything!")) {
+    return;
+  }
+  const paths = {
+    Chat: "chat",
+    "Image Generation": "images",
+    "Text-to-Speech & Speech-to-Text": "speech",
+    Translation: "translation",
+    Moderation: "moderation",
+    "Documnent Analysis": "text",
+    "AI Detection": "detect",
+  };
+
+  for (let moduleName of Object.keys(paths)) {
+    // if it's not included then delete it's path
+    if (modules.every((m) => m !== moduleName)) {
+      const path = `${projectPath}/server/api/modules/${paths[moduleName]}`;
+      fs.rmSync(path, {
+        recursive: true,
+        force: true,
+      });
+    }
+  }
+}
 async function generateSecret() {
   return randomBytes(32).toString("hex");
 }
@@ -333,8 +362,6 @@ async function createEnv(answers, { projectPath }) {
     logger.log();
     await sleep();
     logger.success(".env file has been successfully created.");
-    await sleep();
-    logger.success("Setup complete!");
   } catch (error) {
     console.error("Failed to create .env file:", error);
   }
