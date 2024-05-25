@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import chalk from "chalk";
+import commandExists from "command-exists";
 import { execSync } from "child_process";
 import figlet from "figlet";
 import fs from "fs";
@@ -258,7 +259,11 @@ async function runAnswers(answers) {
   cloneRepo(projectPath);
   logger.interactive("2").await(`Installing dependencies`);
 
-  execSync(`yarn`, { cwd: projectPath, stdio: "ignore" });
+  if (await commandExists("yarn")) {
+    execSync(`yarn`, { cwd: projectPath, stdio: "ignore" });
+  } else {
+    execSync(`npm i`, { cwd: projectPath, stdio: "ignore" });
+  }
   logger.interactive("2").success(`Dependencies installed`);
   await createEnv(answers, { projectPath });
   await pruneModules({ modules: answers.modules, projectPath });
