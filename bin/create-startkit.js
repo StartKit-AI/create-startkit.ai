@@ -90,7 +90,7 @@ const modules = [
   "Text-to-Speech & Speech-to-Text",
   "Translation",
   "Moderation",
-  "Documnent Analysis",
+  "Document Analysis",
   "AI Detection",
 ];
 
@@ -240,7 +240,7 @@ inquirer
       type: "list",
       name: "startAdmin",
       message:
-        "When setup is complete, the StartKit.AI server will start and open the config page so that you can set an Admin username and password.",
+        "When setup is complete, the StartKit.AI server will start and open the config page so that you can set an Admin username.",
       choices: ["OK", `No, I'll do this later`],
       prefix: `\n${chalk.green("?")}`,
     },
@@ -282,7 +282,7 @@ async function runAnswers(answers) {
 
 function cloneRepo(projectPath) {
   logger.interactive("1").await(`Cloning StartKit.AI repo into ${projectPath}`);
-  execSync(`git clone --recurse-submodules ${repo} ${projectPath}`, {
+  execSync(`git clone ${repo} ${projectPath}`, {
     stdio: "ignore",
   });
   execSync(`cd ${projectPath} && git remote add startkit ${repo}`);
@@ -301,7 +301,7 @@ async function pruneModules({ modules, projectPath }) {
     "Text-to-Speech & Speech-to-Text": "speech",
     Translation: "translation",
     Moderation: "moderation",
-    "Documnent Analysis": "text",
+    "Document Analysis": "text",
     "AI Detection": "detect",
   };
 
